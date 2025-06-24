@@ -1,0 +1,42 @@
+{
+  "levels": [
+    {
+      "layout": "src/test/java/inkball/simple.txt",
+      "time": 60,
+      "spawn_interval": 5,
+      "score_increase_from_hole_capture_modifier": 1.0,
+      "score_decrease_from_wrong_hole_modifier": 1.0,
+      "balls": ["grey", "orange", "blue", "green", "yellow"]
+    },
+    {
+      "layout": "src/test/java/inkball/simple.txt",
+      "time": 0,
+      "spawn_interval": 5,
+      "score_increase_from_hole_capture_modifier": 1.0,
+      "score_decrease_from_wrong_hole_modifier": 1.0,
+      "balls": ["grey", "orange", "blue", "green", "yellow"]
+    },
+    {
+      "layout": "src/test/java/inkball/hole.txt",
+      "time": 60,
+      "spawn_interval": 5,
+      "score_increase_from_hole_capture_modifier": 1.0,
+      "score_decrease_from_wrong_hole_modifier": 1.0,
+      "balls": ["grey", "orange", "blue", "green", "yellow"]
+    }
+  ],
+  "score_increase_from_hole_capture": {
+    "grey": 20,
+    "orange": 30,
+    "blue": 40,
+    "green": 50,
+    "yellow": 100
+  },
+  "score_decrease_from_wrong_hole": {
+    "grey": 10,
+    "orange": 25,
+    "blue": 50,
+    "green": 75,
+    "yellow": 100
+  }
+}

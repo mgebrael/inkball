@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Level.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Inkball</a> &gt; <a href="index.source.html" class="el_package">inkball</a> &gt; <span class="el_source">Level.java</span></div><h1>Level.java</h1><pre class="source lang-java linenums">package inkball;
+
+import processing.core.PImage;
+import processing.data.JSONObject;
+import java.util.*;
+import java.io.*;
+
+/**
+ * The class containing objects specific to the level being played.
+ */
+public class Level {
+    public Tile[][] grid;
+<span class="fc" id="L13">    public LinkedList&lt;Ball&gt; balls = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L14">    public LinkedList&lt;Ball&gt; topbarBalls = new LinkedList&lt;&gt;();</span>
+
+<span class="fc" id="L16">    public LinkedList&lt;Line&gt; drawnLines = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L17">    public LinkedList&lt;Spawner&gt; spawners = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L18">    public LinkedList&lt;Hole&gt; holes = new LinkedList&lt;&gt;();</span>
+
+    private int spawnInterval;
+<span class="fc" id="L21">    private int spawnTimer = 9;</span>
+    private boolean shiftTopbarBalls;
+
+    private int score;
+    private JSONObject scoreIncrease;
+    private JSONObject scoreDecrease;
+    private double scoreIncreaseModifier;
+    private double scoreDecreaseModifier;
+
+    private int timer;
+    private boolean paused;
+    private boolean lost;
+
+<span class="fc" id="L34">    public Level(App app, JSONObject config, JSONObject layout) {</span>
+<span class="fc" id="L35">        String filename = layout.get(&quot;layout&quot;).toString();</span>
+<span class="fc" id="L36">        File f = new File(filename);</span>
+
+<span class="fc" id="L38">        grid = new Tile[App.BOARD_HEIGHT][App.BOARD_WIDTH];</span>
+<span class="fc" id="L39">        tileGrid(f);</span>
+
+<span class="fc" id="L41">        addBalls(layout.getJSONArray(&quot;balls&quot;).getStringArray());</span>
+
+<span class="fc" id="L43">        spawnInterval = layout.getInt(&quot;spawn_interval&quot;);</span>
+<span class="fc" id="L44">        timer = layout.getInt(&quot;time&quot;);</span>
+
+<span class="fc" id="L46">        score = app.getScore();</span>
+<span class="fc" id="L47">        scoreIncrease = config.getJSONObject(&quot;score_increase_from_hole_capture&quot;);</span>
+<span class="fc" id="L48">        scoreDecrease = config.getJSONObject(&quot;score_decrease_from_wrong_hole&quot;);</span>
+<span class="fc" id="L49">        scoreIncreaseModifier = layout.getDouble(&quot;score_increase_from_hole_capture_modifier&quot;);</span>
+<span class="fc" id="L50">        scoreDecreaseModifier = layout.getDouble(&quot;score_decrease_from_wrong_hole_modifier&quot;);</span>
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * Returns true if the tobar is in the process of shifting the topbar balls.
+     */
+    public boolean topbarBallsShifting() {
+<span class="fc" id="L57">        return shiftTopbarBalls;</span>
+    }
+
+    /**
+     * Stops the topbar balls from shifting.
+     */
+    public void stopShifting() {
+<span class="fc" id="L64">        shiftTopbarBalls = false;</span>
+<span class="fc" id="L65">    }</span>
+
+    /**
+     * Stop the timer and freeze moving balls.
+     */
+    public void pause() {
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">        paused = !paused;</span>
+<span class="fc" id="L72">    }</span>
+
+    /**
+     * Returns true if the level is paused
+     */
+    public boolean isPaused() {
+<span class="fc" id="L78">        return paused;</span>
+    }
+
+    /**
+     * Returns true if the timer runs out.
+     */
+    public boolean isLost() {
+<span class="fc" id="L85">        return lost;</span>
+    }
+
+    /**
+     * Method for adding tiles to the grid, as specified by the config file.
+     */
+    public void tileGrid(File f) {
+        try {
+<span class="fc" id="L93">            Scanner scan = new Scanner(f);</span>
+
+<span class="fc bfc" id="L95" title="All 2 branches covered.">            for (int i = 0; i &lt; grid.length; i++) {</span>
+<span class="fc" id="L96">                String row = &quot;&quot;;</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">                if (scan.hasNextLine())</span>
+<span class="fc" id="L98">                    row = scan.nextLine();</span>
+
+<span class="fc" id="L100">                row += &quot;XXXXXXXXXXXXXXXXXX&quot;;</span>
+<span class="fc" id="L101">                constructRow(row, i);</span>
+            }
+<span class="fc" id="L103">            scan.close();</span>
+            
+<span class="pc" id="L105">        } catch (FileNotFoundException e) {}</span>
+<span class="fc" id="L106">    }</span>
+
+    /**
+     * Initialize balls that will be used for the level, as specified by the config file.
+     */
+    public void addBalls(String[] colours) {
+<span class="fc" id="L112">        int x = 0;</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        for (String ballColour : colours) {</span>
+<span class="fc" id="L114">            topbarBalls.add(new Ball(x++, 0, ballColour));</span>
+        }
+<span class="fc" id="L116">    }</span>
+
+    /**
+     * Method for creating a row of tiles for the level.
+     */
+    public void constructRow(String row, int i) {
+<span class="fc" id="L122">        boolean skipNext = false;</span>
+
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        for (int j = 0; j &lt; grid[i].length; j++) {</span>
+<span class="fc" id="L125">            char spot = row.charAt(j);</span>
+
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            if (spot == 'X') {</span>
+<span class="fc" id="L128">                grid[i][j] = new Wall(j, i, 0);</span>
+            }
+<span class="fc bfc" id="L130" title="All 10 branches covered.">            else if ((spot == '1' || spot == '2' || spot == '3' || spot == '4') &amp;&amp; !skipNext) {</span>
+<span class="fc" id="L131">                grid[i][j] = new Wall(j, i, spot - '0'); // gives the int value for spot</span>
+            }
+<span class="fc bfc" id="L133" title="All 2 branches covered.">            else if (spot == '#') {</span>
+<span class="fc" id="L134">                grid[i][j] = new Brick(j, i, 0);</span>
+            }
+<span class="fc bfc" id="L136" title="All 8 branches covered.">            else if (spot == '6' || spot == '7' || spot == '8' || spot == '9') {</span>
+<span class="fc" id="L137">                grid[i][j] = new Brick(j, i, spot - '5');</span>
+            }
+<span class="fc bfc" id="L139" title="All 2 branches covered.">            else if (spot == 'S') {</span>
+<span class="fc" id="L140">                spawners.add(new Spawner(j, i));</span>
+<span class="fc" id="L141">                grid[i][j] = spawners.getLast();</span>
+            }
+<span class="fc bfc" id="L143" title="All 2 branches covered.">            else if (spot == 'B') {</span>
+<span class="fc" id="L144">                grid[i][j] = new Tile(j, i);</span>
+<span class="fc" id="L145">                int colour = row.charAt(j+1) - '0';</span>
+<span class="fc" id="L146">                balls.add(new Ball(j, i, colour));</span>
+<span class="fc" id="L147">                skipNext = true;</span>
+<span class="fc" id="L148">                continue;</span>
+            }
+<span class="fc bfc" id="L150" title="All 2 branches covered.">            else if (spot == 'H') {</span>
+<span class="fc" id="L151">                int colour = row.charAt(j+1) - '0';</span>
+<span class="fc" id="L152">                holes.add(new Hole(j, i, colour));</span>
+<span class="fc" id="L153">                grid[i][j] = holes.getLast();</span>
+<span class="fc" id="L154">                skipNext = true;</span>
+<span class="fc" id="L155">                continue;</span>
+            }
+            else
+<span class="fc" id="L158">                grid[i][j] = new Tile(j, i);</span>
+
+<span class="fc bfc" id="L160" title="All 2 branches covered.">            if (skipNext)</span>
+<span class="fc" id="L161">                skipNext = false;</span>
+        }
+<span class="fc" id="L163">    }</span>
+
+    /**
+     * Display time remaining in the topbar.
+     */
+    public void displayTimer(App app) {
+<span class="fc" id="L169">        app.text(&quot;Time: &quot;+timer, 440, App.TOPBAR-8);</span>
+
+<span class="pc bpc" id="L171" title="1 of 4 branches missed.">        if (paused || remainingBalls() == 0) return;</span>
+
+<span class="fc bfc" id="L173" title="All 2 branches covered.">        if (timer == 0) {</span>
+<span class="fc" id="L174">            lost = true;</span>
+<span class="fc" id="L175">            paused = true;</span>
+        }
+<span class="fc bfc" id="L177" title="All 2 branches covered.">        else if (app.frameCount % 30 == 0)</span>
+<span class="fc" id="L178">            timer--;</span>
+<span class="fc" id="L179">    }</span>
+
+    /**
+     * Display total score in the topbar.
+     */
+    public void displayScore(App app) {
+<span class="fc" id="L185">        app.text(&quot;Score: &quot;+score, 440, App.TOPBAR-36);</span>
+<span class="fc" id="L186">    }</span>
+
+    /**
+     * Display the cooldown timer for respawning balls.
+     */
+    public void displaySpawnTimer(App app) {
+<span class="fc" id="L192">        float time = 10f * spawnTimer / App.FPS;</span>
+<span class="fc" id="L193">        app.text((int)time/10+&quot;.&quot;+(int)time%10, 192, 48);</span>
+
+<span class="fc bfc" id="L195" title="All 2 branches covered.">        if (paused) return;</span>
+
+<span class="fc" id="L197">        spawnTimer--;</span>
+<span class="fc bfc" id="L198" title="All 2 branches covered.">        if (spawnTimer &lt; 0) {</span>
+<span class="fc" id="L199">            spawnBall();</span>
+        }
+<span class="fc" id="L201">    }</span>
+
+    /**
+     * Spawn a ball from a random spawner in the level.
+     */
+    public void spawnBall() {
+<span class="fc" id="L207">        spawnTimer = spawnInterval * App.FPS;</span>
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">        if (!topbarBalls.isEmpty())</span>
+<span class="fc" id="L209">            topbarBalls.removeFirst().spawn(this);</span>
+<span class="fc" id="L210">        shiftTopbarBalls = true;</span>
+        
+<span class="fc" id="L212">    }</span>
+
+    /**
+     * Increase/decrease the score depending on the ball/hole colour, and adds ball to respawn queue if necessary.
+     */
+    public void updateScore(Ball ball, Hole hole) {
+        // Capture
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        if (hole.colourMatches(ball)) {</span>
+<span class="nc" id="L220">            score += scoreIncrease.getInt(ball.getColour()) * scoreIncreaseModifier;</span>
+<span class="nc" id="L221">            return;</span>
+        }
+
+        // Respawn
+<span class="nc" id="L225">        score -= scoreDecrease.getInt(ball.getColour()) * scoreDecreaseModifier;</span>
+<span class="nc" id="L226">        Ball respawnBall = new Ball(0, 0, ball.getColour());</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">        if (!topbarBalls.isEmpty())</span>
+<span class="nc" id="L228">            respawnBall.setPosition(topbarBalls.getLast().getX() + App.CELLSIZE, App.CELLSIZE);</span>
+<span class="nc" id="L229">        topbarBalls.add(respawnBall);</span>
+<span class="nc" id="L230">    }</span>
+
+    /**
+     * Initialise score from the total of the previously played levels.
+     */
+    public void setScore(int total) {
+<span class="fc" id="L236">        score = total;</span>
+<span class="fc" id="L237">    }</span>
+
+    /**
+     * Return cumulative game score.
+     */
+    public int getScore() {
+<span class="fc" id="L243">        return score;</span>
+    }
+
+    /**
+     * Returns the count of all total balls not yet captured in the level.
+     */
+    public int remainingBalls() {
+<span class="fc" id="L250">        return topbarBalls.size() + balls.size();</span>
+    }
+
+    /**
+     * Return true if there are no more remaining balls and the time has ended.
+     */
+    public boolean hasEnded() {
+<span class="fc bfc" id="L257" title="All 4 branches covered.">        return remainingBalls() == 0 &amp;&amp; timer == 0;</span>
+    }
+
+    /**
+     * Decrease timer and increase score.
+     */
+    public void countRemainingTime(App app) {
+<span class="nc" id="L264">        timer--;</span>
+<span class="nc" id="L265">        score++;</span>
+<span class="nc" id="L266">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

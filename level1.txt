@@ -1,0 +1,18 @@
+XXXXXXX2222XXXXXXX
+X  8          7H0X
+X  8          7  X
+X888          777X
+X                X
+X          ######X
+X    XX   XH1    X
+X     X XX       X
+X    SXX         X
+X     X XX H2    X
+X    XX   X      X
+X          ######X
+X                X
+X     B2         X
+X999          666X
+X  9          6H0X
+X  9          6  X
+XXXXXXX1111XXXXXXX
