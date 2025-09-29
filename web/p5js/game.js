@@ -46,10 +46,9 @@ class Ball {
   constructor(x, y, color) {
     this.x = x * CELLSIZE + CELLSIZE/2;
     this.y = y * CELLSIZE + TOPBAR + CELLSIZE/2;
-    this.vx = random(-2, 2);
-    this.vy = random(-2, 2);
-    if (this.vx === 0) this.vx = 1;
-    if (this.vy === 0) this.vy = 1;
+    // Only diagonal velocities: either +2 or -2 for both x and y
+    this.vx = random() < 0.5 ? -2 : 2;
+    this.vy = random() < 0.5 ? -2 : 2;
     this.radius = 12;
     this.color = color;
     this.colorIndex = this.getColorIndex(color);
@@ -65,6 +64,9 @@ class Ball {
     
     this.x += this.vx;
     this.y += this.vy;
+    
+    // Check collision with level walls
+    this.checkWallCollisions();
     
     // Bounce off level boundaries
     if (this.x <= this.radius) {
@@ -83,6 +85,76 @@ class Ball {
       this.vy = -Math.abs(this.vy);
       this.y = HEIGHT - this.radius;
     }
+  }
+  
+  checkWallCollisions() {
+    // Get the grid position of the ball
+    let gridX = Math.floor(this.x / CELLSIZE);
+    let gridY = Math.floor((this.y - TOPBAR) / CELLSIZE);
+    
+    // Check surrounding cells for walls
+    let directions = [
+      {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1},
+      {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}, {dx: 1, dy: 1}
+    ];
+    
+    for (let dir of directions) {
+      let checkX = gridX + dir.dx;
+      let checkY = gridY + dir.dy;
+      
+      if (this.isWall(checkX, checkY)) {
+        // Calculate the wall cell boundaries
+        let wallLeft = checkX * CELLSIZE;
+        let wallRight = (checkX + 1) * CELLSIZE;
+        let wallTop = checkY * CELLSIZE + TOPBAR;
+        let wallBottom = (checkY + 1) * CELLSIZE + TOPBAR;
+        
+        // Check if ball overlaps with this wall cell
+        if (this.x + this.radius > wallLeft && 
+            this.x - this.radius < wallRight && 
+            this.y + this.radius > wallTop && 
+            this.y - this.radius < wallBottom) {
+          
+          // Determine which side of the wall was hit and reflect accordingly
+          let ballCenterX = this.x;
+          let ballCenterY = this.y;
+          let wallCenterX = (wallLeft + wallRight) / 2;
+          let wallCenterY = (wallTop + wallBottom) / 2;
+          
+          let overlapX = this.radius - Math.abs(ballCenterX - wallCenterX) + CELLSIZE/2;
+          let overlapY = this.radius - Math.abs(ballCenterY - wallCenterY) + CELLSIZE/2;
+          
+          if (overlapX < overlapY) {
+            // Hit from left or right
+            if (ballCenterX < wallCenterX) {
+              this.x = wallLeft - this.radius;
+              this.vx = -Math.abs(this.vx);
+            } else {
+              this.x = wallRight + this.radius;
+              this.vx = Math.abs(this.vx);
+            }
+          } else {
+            // Hit from top or bottom
+            if (ballCenterY < wallCenterY) {
+              this.y = wallTop - this.radius;
+              this.vy = -Math.abs(this.vy);
+            } else {
+              this.y = wallBottom + this.radius;
+              this.vy = Math.abs(this.vy);
+            }
+          }
+          return; // Exit after first collision to prevent multiple bounces
+        }
+      }
+    }
+  }
+  
+  isWall(x, y) {
+    if (y < 0 || y >= levelLayout.length || x < 0 || x >= levelLayout[y].length) {
+      return true; // Treat out-of-bounds as walls
+    }
+    let char = levelLayout[y][x];
+    return char === 'X' || char === '4';
   }
   
   draw() {
