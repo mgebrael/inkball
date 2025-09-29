@@ -6,6 +6,13 @@ const HEIGHT = 640;
 const BOARD_WIDTH = WIDTH / CELLSIZE;
 const BOARD_HEIGHT = (HEIGHT - TOPBAR) / CELLSIZE;
 
+// Sprites
+let ballSprites = [];
+let holeSprites = [];
+let wallSprites = [];
+let tileSprite;
+let entrySprite;
+
 // Level layout
 const levelLayout = [
   "4XXXXXXXXXXXXXXXX4",
@@ -159,19 +166,25 @@ class Ball {
   
   draw() {
     push();
-    // Simple colored circles for balls
-    let colors = {
-      0: [128, 128, 128], // grey
-      1: [255, 165, 0],   // orange
-      2: [0, 0, 255],     // blue
-      3: [0, 255, 0],     // green
-      4: [255, 255, 0]    // yellow
-    };
-    let col = colors[this.colorIndex] || [128, 128, 128];
-    fill(col[0], col[1], col[2]);
-    stroke(0);
-    strokeWeight(2);
-    ellipse(this.x, this.y, this.radius * 2);
+    // Use ball sprite instead of colored circle
+    if (ballSprites[this.colorIndex]) {
+      imageMode(CENTER);
+      image(ballSprites[this.colorIndex], this.x, this.y, CELLSIZE, CELLSIZE);
+    } else {
+      // Fallback to colored circles if sprites don't load
+      let colors = {
+        0: [128, 128, 128], // grey
+        1: [255, 165, 0],   // orange
+        2: [0, 0, 255],     // blue
+        3: [0, 255, 0],     // green
+        4: [255, 255, 0]    // yellow
+      };
+      let col = colors[this.colorIndex] || [128, 128, 128];
+      fill(col[0], col[1], col[2]);
+      stroke(0);
+      strokeWeight(2);
+      ellipse(this.x, this.y, this.radius * 2);
+    }
     pop();
   }
   
@@ -218,20 +231,26 @@ class Hole {
   
   draw() {
     push();
-    // Simple colored squares for holes
-    let colors = {
-      0: [64, 64, 64],    // grey
-      1: [200, 100, 0],   // orange
-      2: [0, 0, 200],     // blue
-      3: [0, 200, 0],     // green
-      4: [200, 200, 0]    // yellow
-    };
-    let col = colors[this.colorIndex] || [64, 64, 64];
-    fill(col[0], col[1], col[2]);
-    stroke(0);
-    strokeWeight(2);
-    rectMode(CENTER);
-    rect(this.x, this.y, this.size, this.size);
+    // Use hole sprite instead of colored rectangle
+    if (holeSprites[this.colorIndex]) {
+      imageMode(CENTER);
+      image(holeSprites[this.colorIndex], this.x, this.y, CELLSIZE, CELLSIZE);
+    } else {
+      // Fallback to colored rectangles if sprites don't load
+      let colors = {
+        0: [64, 64, 64],    // grey
+        1: [200, 100, 0],   // orange
+        2: [0, 0, 200],     // blue
+        3: [0, 200, 0],     // green
+        4: [200, 200, 0]    // yellow
+      };
+      let col = colors[this.colorIndex] || [64, 64, 64];
+      fill(col[0], col[1], col[2]);
+      stroke(0);
+      strokeWeight(2);
+      rectMode(CENTER);
+      rect(this.x, this.y, this.size, this.size);
+    }
     pop();
   }
   
@@ -257,11 +276,18 @@ class Spawner {
   
   draw() {
     push();
-    fill(255, 255, 0);
-    stroke(0);
-    strokeWeight(2);
-    rectMode(CENTER);
-    rect(this.x, this.y, CELLSIZE * 0.8, CELLSIZE * 0.8);
+    // Use entry point sprite
+    if (entrySprite) {
+      imageMode(CENTER);
+      image(entrySprite, this.x, this.y, CELLSIZE, CELLSIZE);
+    } else {
+      // Fallback to yellow rectangle if sprite doesn't load
+      fill(255, 255, 0);
+      stroke(0);
+      strokeWeight(2);
+      rectMode(CENTER);
+      rect(this.x, this.y, CELLSIZE * 0.8, CELLSIZE * 0.8);
+    }
     pop();
   }
 }
@@ -346,6 +372,27 @@ class Line {
     let dy = py - yy;
     return sqrt(dx * dx + dy * dy);
   }
+}
+
+function preload() {
+  // Load ball sprites
+  for (let i = 0; i < 5; i++) {
+    ballSprites[i] = loadImage(`assets/ball${i}.png`);
+  }
+  
+  // Load hole sprites
+  for (let i = 0; i < 5; i++) {
+    holeSprites[i] = loadImage(`assets/hole${i}.png`);
+  }
+  
+  // Load wall sprites
+  for (let i = 0; i < 5; i++) {
+    wallSprites[i] = loadImage(`assets/wall${i}.png`);
+  }
+  
+  // Load other sprites
+  tileSprite = loadImage('assets/tile.png');
+  entrySprite = loadImage('assets/entrypoint.png');
 }
 
 function setup() {
@@ -470,25 +517,42 @@ function draw() {
 }
 
 function drawGrid() {
-  // Simple grid background
+  // Draw tile background with sprite
   push();
-  fill(240);
-  stroke(200);
   for (let y = 0; y < BOARD_HEIGHT; y++) {
     for (let x = 0; x < BOARD_WIDTH; x++) {
-      rect(x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+      if (tileSprite) {
+        image(tileSprite, x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+      } else {
+        // Fallback to simple grid
+        fill(240);
+        stroke(200);
+        rect(x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+      }
     }
   }
   
-  // Draw walls from level layout
+  // Draw walls from level layout with sprites
   for (let y = 0; y < levelLayout.length; y++) {
     let row = levelLayout[y];
     for (let x = 0; x < row.length; x++) {
       let char = row[x];
-      if (char === 'X' || char === '4') {
-        fill(100);
-        stroke(80);
-        rect(x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+      if (char === 'X') {
+        if (wallSprites[0]) {
+          image(wallSprites[0], x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+        } else {
+          fill(100);
+          stroke(80);
+          rect(x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+        }
+      } else if (char === '4') {
+        if (wallSprites[4]) {
+          image(wallSprites[4], x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+        } else {
+          fill(120);
+          stroke(100);
+          rect(x * CELLSIZE, y * CELLSIZE + TOPBAR, CELLSIZE, CELLSIZE);
+        }
       }
     }
   }
