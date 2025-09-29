@@ -66,14 +66,22 @@ class Ball {
     this.x += this.vx;
     this.y += this.vy;
     
-    // Bounce off walls
-    if (this.x <= this.radius || this.x >= WIDTH - this.radius) {
-      this.vx *= -1;
-      this.x = constrain(this.x, this.radius, WIDTH - this.radius);
+    // Bounce off level boundaries
+    if (this.x <= this.radius) {
+      this.vx = Math.abs(this.vx);
+      this.x = this.radius;
     }
-    if (this.y <= TOPBAR + this.radius || this.y >= HEIGHT - this.radius) {
-      this.vy *= -1;
-      this.y = constrain(this.y, TOPBAR + this.radius, HEIGHT - this.radius);
+    if (this.x >= WIDTH - this.radius) {
+      this.vx = -Math.abs(this.vx);
+      this.x = WIDTH - this.radius;
+    }
+    if (this.y <= TOPBAR + this.radius) {
+      this.vy = Math.abs(this.vy);
+      this.y = TOPBAR + this.radius;
+    }
+    if (this.y >= HEIGHT - this.radius) {
+      this.vy = -Math.abs(this.vy);
+      this.y = HEIGHT - this.radius;
     }
   }
   
@@ -100,10 +108,30 @@ class Ball {
     return dist < this.radius + 10;
   }
   
-  reflectOffLine(line) {
-    // Simple reflection - just reverse velocity
-    this.vx *= -1;
-    this.vy *= -1;
+  reflectOffLine(segment) {
+    // Calculate line direction vector
+    let dx = segment.x2 - segment.x1;
+    let dy = segment.y2 - segment.y1;
+    
+    // Calculate the angle of the line normal
+    let angle = Math.max(Math.atan2(dx, -dy), Math.atan2(-dx, dy));
+    let ballDirection = Math.atan2(this.vy, this.vx);
+    
+    // Determine which side of the line the ball is on
+    if (ballDirection - angle > -Math.PI/2 && ballDirection - angle <= Math.PI/2) {
+      angle -= Math.PI;
+    }
+    
+    // Calculate the normal vector
+    let normalX = Math.cos(angle);
+    let normalY = Math.sin(angle);
+    
+    // Calculate the scalar for reflection
+    let scalar = 2 * (this.vx * normalX + this.vy * normalY);
+    
+    // Apply reflection
+    this.vx -= normalX * scalar;
+    this.vy -= normalY * scalar;
   }
 }
 
@@ -195,12 +223,17 @@ class Line {
     for (let i = 0; i < this.points.length - 1; i++) {
       let p1 = this.points[i];
       let p2 = this.points[i + 1];
-      let dist = this.distanceToLineSegment(ball.x, ball.y, p1.x, p1.y, p2.x, p2.y);
-      if (dist < ball.radius + 4) {
-        return true;
+      
+      // Use the original collision detection method: distance from both endpoints
+      let d1 = sqrt(pow(ball.x - p1.x, 2) + pow(ball.y - p1.y, 2));
+      let d2 = sqrt(pow(ball.x - p2.x, 2) + pow(ball.y - p2.y, 2));
+      let segmentLength = sqrt(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2));
+      
+      if (d1 + d2 <= segmentLength + ball.radius) {
+        return {x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y};
       }
     }
-    return false;
+    return null;
   }
   
   checkMouseCollision(mx, my) {
@@ -334,8 +367,9 @@ function draw() {
     line.draw();
     
     for (let ball of balls) {
-      if (line.checkCollision(ball)) {
-        ball.reflectOffLine(line);
+      let segment = line.checkCollision(ball);
+      if (segment) {
+        ball.reflectOffLine(segment);
         linesToRemove.push(i);
         break;
       }
